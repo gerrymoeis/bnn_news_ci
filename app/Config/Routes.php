@@ -5,48 +5,53 @@ use CodeIgniter\Router\RouteCollection;
 /**
  * @var RouteCollection $routes
  */
+
+// == PUBLIC ROUTES ==
 $routes->get('/', 'HomeController::index');
+$routes->get('/about', 'PageController::about');
+$routes->get('/contact', 'PageController::contact');
 $routes->get('post/(:segment)', 'PostController::show/$1');
+$routes->get('category/(:segment)', 'HomeController::postsByCategory/$1');
 
-// Password Reset Routes
-    // Simplified Password Reset Flow
-    $routes->get('password/forgot', 'PasswordController::forgot');
-    $routes->post('password/process-email', 'PasswordController::processEmail');
-    $routes->get('password/new', 'PasswordController::newPasswordForm');
-    $routes->post('password/update', 'PasswordController::updatePassword');
-
-// Dashboard & Profile Routes (Protected)
-$routes->group('dashboard', ['filter' => 'auth'], static function ($routes) {
-    $routes->get('/', 'DashboardController::index');
-    // Add other dashboard routes here in the future
-});
-
-$routes->get('profile', 'ProfileController::index', ['filter' => 'auth']);
-$routes->post('profile/update-details', 'ProfileController::updateDetails', ['filter' => 'auth']);
-$routes->post('profile/update-password', 'ProfileController::updatePassword', ['filter' => 'auth']);
-
-// Logout Route
-$routes->get('logout', 'AuthController::logout');
-
-// We get a performance increase by specifying the default
-// route since we don't have to scan directories.
-
-$routes->get('category/(:segment)', 'Home::postsByCategory/$1');
-
-// Authentication Routes
+// --- Authentication ---
 $routes->get('login', 'AuthController::login');
 $routes->post('login', 'AuthController::attemptLogin');
 $routes->get('register', 'AuthController::register');
-$routes->post('register', 'AuthController::attemptRegister');
+$routes->post('register', 'AuthController::processRegister');
 $routes->get('logout', 'AuthController::logout');
 
-// Admin Routes
+// --- Password Reset ---
+$routes->get('password/forgot', 'PasswordController::forgot');
+$routes->post('password/forgot', 'PasswordController::processForgot');
+$routes->get('password/reset/(:any)', 'PasswordController::reset/$1');
+$routes->post('password/reset', 'PasswordController::processReset');
+
+
+// == PROTECTED ROUTES ==
+
+// --- Dashboard ---
+$routes->get('dashboard', 'DashboardController::index', ['filter' => 'auth']);
+
+// --- Profile (All Logged-in Users) ---
+$routes->group('profile', ['filter' => 'auth'], function ($routes) {
+    $routes->get('/', 'ProfileController::index');
+    $routes->post('update-details', 'ProfileController::updateDetails');
+    $routes->post('update-password', 'ProfileController::updatePassword');
+});
+
+// --- Admin (Role: 1) ---
 $routes->group('admin', ['filter' => ['auth', 'role:1']], function ($routes) {
     $routes->get('dashboard', 'AdminController::index');
+    
+    // User Management
+    $routes->get('users', 'AdminController::manageUsers');
     $routes->get('users/pending', 'AdminController::pendingUsers');
     $routes->get('users/approve/(:num)', 'AdminController::approveUser/$1');
+    $routes->get('users/edit/(:num)', 'AdminController::editUser/$1');
+    $routes->post('users/update/(:num)', 'AdminController::updateUser/$1');
+    $routes->get('users/delete/(:num)', 'AdminController::deleteUser/$1');
 
-    // Category CRUD
+    // Category Management
     $routes->get('categories', 'AdminController::manageCategories');
     $routes->get('categories/new', 'AdminController::createCategory');
     $routes->post('categories/create', 'AdminController::storeCategory');
@@ -55,8 +60,15 @@ $routes->group('admin', ['filter' => ['auth', 'role:1']], function ($routes) {
     $routes->get('categories/delete/(:num)', 'AdminController::deleteCategory/$1');
 });
 
-// Post Management Routes (Wartawan & Editor)
-$routes->group('posts', ['filter' => ['auth', 'role:3']], function ($routes) { // Changed to role:3 only
+// --- Editor (Role: 2) ---
+$routes->group('editor', ['filter' => ['auth', 'role:2']], function ($routes) {
+    $routes->get('pending', 'PostController::pendingApproval');
+    $routes->get('approve/(:num)', 'PostController::approve/$1');
+    $routes->get('reject/(:num)', 'PostController::reject/$1');
+});
+
+// --- Wartawan (Role: 3) ---
+$routes->group('posts', ['filter' => ['auth', 'role:3']], function ($routes) {
     $routes->get('/', 'PostController::index');
     $routes->get('new', 'PostController::new');
     $routes->post('create', 'PostController::create');
@@ -64,11 +76,3 @@ $routes->group('posts', ['filter' => ['auth', 'role:3']], function ($routes) { /
     $routes->post('update/(:num)', 'PostController::update/$1');
     $routes->get('delete/(:num)', 'PostController::delete/$1');
 });
-
-// Editor Specific Routes
-$routes->group('editor', ['filter' => ['auth', 'role:2']], function ($routes) {
-    $routes->get('pending', 'PostController::pendingApproval');
-    $routes->get('approve/(:num)', 'PostController::approve/$1');
-    $routes->get('reject/(:num)', 'PostController::reject/$1');
-});
-

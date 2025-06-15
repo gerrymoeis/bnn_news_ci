@@ -192,4 +192,48 @@ class PostController extends BaseController
 
         return redirect()->to('/posts')->with('message', 'Postingan berhasil dihapus.');
     }
+
+    //==================================================================
+    // EDITOR METHODS
+    //==================================================================
+
+    /**
+     * Menampilkan daftar postingan yang menunggu persetujuan.
+     */
+    public function pendingApproval()
+    {
+        $postModel = new PostModel();
+        $data = [
+            'title' => 'Review Postingan',
+            'posts' => $postModel
+                ->select('posts.*, users.name as author_name, categories.name as category_name')
+                ->join('users', 'users.id = posts.user_id')
+                ->join('categories', 'categories.id = posts.category_id')
+                ->where('posts.status', 'pending')
+                ->orderBy('posts.created_at', 'DESC')
+                ->findAll()
+        ];
+
+        return view('editor/pending_list', $data);
+    }
+
+    /**
+     * Menyetujui dan mempublikasikan postingan.
+     */
+    public function approve($id)
+    {
+        $postModel = new PostModel();
+        $postModel->update($id, ['status' => 'published']);
+        return redirect()->to('/editor/pending')->with('message', 'Postingan berhasil disetujui dan dipublikasikan.');
+    }
+
+    /**
+     * Menolak postingan.
+     */
+    public function reject($id)
+    {
+        $postModel = new PostModel();
+        $postModel->update($id, ['status' => 'rejected']);
+        return redirect()->to('/editor/pending')->with('message', 'Postingan berhasil ditolak.');
+    }
 }
